@@ -55,12 +55,76 @@ The API will be available at `http://localhost:8001`.
 
 ## CLI Usage
 
+The CLI lets you process files and check accessibility scores from the command line.
+
+### Setup
+
 ```bash
 cd api
 pip install -e .
-export OPENAI_API_KEY=sk-...
 
-pptx-alttext-v2 process input.pptx -o output.pptx
+# Set your API key
+export OPENAI_API_KEY=sk-...
+# Or for Azure:
+# export AZURE_OPENAI_API_KEY=...
+# export AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+```
+
+### Commands
+
+#### Process a PowerPoint file
+
+```bash
+# Basic usage -- outputs to <filename>_enhanced_v2.pptx
+pptx-alttext-v2 process presentation.pptx
+
+# Specify output file
+pptx-alttext-v2 process presentation.pptx -o accessible_version.pptx
+
+# Force re-generation of existing alt-text
+pptx-alttext-v2 process presentation.pptx --force-regenerate
+
+# Skip slide title generation
+pptx-alttext-v2 process presentation.pptx --no-slide-titles
+```
+
+#### Score accessibility (without modifying the file)
+
+```bash
+pptx-alttext-v2 score presentation.pptx
+```
+
+This prints a summary and saves a detailed markdown report to
+`<filename>_accessibility_report.md`.
+
+#### Show current configuration
+
+```bash
+pptx-alttext-v2 config
+```
+
+#### Show version
+
+```bash
+pptx-alttext-v2 version
+```
+
+### Alternative invocation
+
+If `pptx-alttext-v2` is not on your PATH (e.g., in Git Bash on Windows), use:
+
+```bash
+python -m powerpoint_alttext_v2.cli process presentation.pptx -o output.pptx
+```
+
+### Batch processing
+
+Process multiple files with a shell loop:
+
+```bash
+for f in slides/*.pptx; do
+  pptx-alttext-v2 process "$f" -o "output/$(basename "$f")"
+done
 ```
 
 ## API Reference
