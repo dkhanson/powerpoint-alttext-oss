@@ -1,0 +1,389 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerPoint Accessibility Tool</title>
+    <link rel="stylesheet" href="https://unpkg.com/rivet-core@2.9.0/css/rivet.min.css">
+    <style>
+        body { background: #f7f7f7; }
+        .upload-card { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            margin: 2rem auto;
+            max-width: 800px;
+        }
+        .upload-zone { 
+            border: 3px dashed #006298; 
+            border-radius: 8px; 
+            padding: 3rem; 
+            text-align: center; 
+            background: #f7f9fb;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-zone:hover { background: #e6f4ff; }
+        .upload-zone.dragover { background: #e6f4ff; border-color: #0080b3; }
+        .upload-icon { font-size: 4rem; margin-bottom: 1rem; }
+        .file-info { margin-top: 1.5rem; display: none; }
+        .file-info.show { display: block; }
+        .consent-box { 
+            margin-top: 2rem; 
+            padding: 1.5rem; 
+            background: #fff9e6; 
+            border-left: 4px solid #ffc107;
+        }
+        .hidden { display: none; }
+        .score-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 1rem; 
+            margin: 2rem 0; 
+        }
+        .score-card { 
+            padding: 2rem; 
+            border-radius: 8px; 
+            text-align: center; 
+        }
+        .score-card h3 { 
+            margin: 0 0 0.5rem; 
+            font-size: 0.875rem; 
+            color: #666; 
+            text-transform: uppercase; 
+        }
+        .score-value { font-size: 3rem; font-weight: bold; margin: 0; }
+        .score-before { background: linear-gradient(135deg, #ffebee, #ffcdd2); border: 2px solid #ef5350; }
+        .score-before .score-value { color: #c62828; }
+        .score-after { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border: 2px solid #66bb6a; }
+        .score-after .score-value { color: #2e7d32; }
+        .score-improvement { background: linear-gradient(135deg, #e3f2fd, #bbdefb); border: 2px solid #42a5f5; }
+        .score-improvement .score-value { color: #1565c0; }
+        .details { background: #f5f5f5; padding: 2rem; border-radius: 8px; margin-top: 2rem; }
+        .markdown-content { 
+            background: white; 
+            padding: 1.5rem; 
+            border-radius: 4px; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #333;
+        }
+        .markdown-content h1 { font-size: 1.75rem; margin: 1.5rem 0 1rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .markdown-content h2 { font-size: 1.5rem; margin: 1.25rem 0 0.75rem; color: #006298; }
+        .markdown-content h3 { font-size: 1.25rem; margin: 1rem 0 0.5rem; color: #333; }
+        .markdown-content p { margin: 0.75rem 0; }
+        .markdown-content ul, .markdown-content ol { margin: 0.75rem 0; padding-left: 2rem; }
+        .markdown-content li { margin: 0.25rem 0; }
+        .markdown-content code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 0.9em; }
+        .markdown-content pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; margin: 1rem 0; }
+        .markdown-content pre code { background: transparent; padding: 0; }
+        .markdown-content strong { font-weight: 600; color: #000; }
+        .markdown-content hr { border: none; border-top: 1px solid #ddd; margin: 1.5rem 0; }
+        .markdown-content blockquote { border-left: 4px solid #006298; padding-left: 1rem; margin: 1rem 0; color: #666; font-style: italic; }
+        .api-status {
+            position: fixed;
+            top: 10px;
+            right: 20px;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .api-status.checking {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffc107;
+        }
+        .api-status.healthy {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #28a745;
+        }
+        .api-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #dc3545;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .checking .status-dot { background: #ffc107; }
+        .healthy .status-dot { background: #28a745; }
+        .error .status-dot { background: #dc3545; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .settings-card { 
+            background: white; 
+            padding: 1.5rem; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            margin: 1rem auto 2rem;
+            max-width: 800px;
+        }
+        .api-selector {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .api-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .custom-endpoint {
+            margin-top: 1rem;
+            display: none;
+        }
+        .custom-endpoint.show {
+            display: block;
+        }
+        .endpoint-status {
+            font-size: 0.875rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+        .endpoint-status.testing {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .endpoint-status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .endpoint-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <header class="rvt-header-wrapper">
+        <div class="rvt-header-local">
+            <div class="rvt-container-lg">
+                <div class="rvt-header-local__inner">
+                    <div class="rvt-header-local__title">
+                        <h1 class="rvt-header-local__heading">PowerPoint Accessibility Tool</h1>
+                    </div>
+                    <div class="rvt-header-local__controls" style="margin-left: auto;">
+                        <!-- Auth UI -->
+                        <div id="authSection" style="display: none;">
+                            <button type="button" class="rvt-button rvt-button--secondary" id="loginBtn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" style="vertical-align: middle; margin-right: 0.5rem;">
+                                    <path fill="currentColor" d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+                                </svg>
+                                Sign In
+                            </button>
+                        </div>
+                        <div id="userProfile" style="display: none;">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="text-align: right;">
+                                    <div style="font-weight: 600;" id="userName"></div>
+                                    <div style="font-size: 0.875rem; color: #666;" id="userEmail"></div>
+                                </div>
+                                <button type="button" class="rvt-button rvt-button--secondary rvt-button--small" id="logoutBtn">Sign Out</button>
+                            </div>
+                        </div>
+    <script>
+        // Pre-check auth state and show correct UI immediately, before scripts load
+        (function() {
+            try {
+                const hasTokens = localStorage.getItem('oidc_access_token');
+                const authSection = document.getElementById('authSection');
+                const userProfile = document.getElementById('userProfile');
+                
+                if (hasTokens && authSection && userProfile) {
+                    // User is authenticated - show profile immediately
+                    authSection.style.display = 'none';
+                    userProfile.style.display = 'block';
+                    console.log('🚀 Pre-loaded: User authenticated - showing profile');
+                } else if (authSection && userProfile) {
+                    // Not authenticated - show login
+                    authSection.style.display = 'block';
+                    userProfile.style.display = 'none';
+                    console.log('🚀 Pre-loaded: Not authenticated - showing login');
+                }
+            } catch (e) {
+                console.error('Pre-load auth check failed:', e);
+            }
+        })();
+    </script>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="rvt-container-lg">
+        <div class="rvt-m-top-xl rvt-m-bottom-xl">
+            <p class="rvt-ts-18">Automatically generate descriptive alt-text for images in your PowerPoint presentations using Azure OpenAI.</p>
+        </div>
+
+        <!-- Auth Notice -->
+        <div id="authNotice" class="rvt-alert rvt-alert--info rvt-m-bottom-lg" style="display: none;">
+            <h3 class="rvt-alert__title">Authentication Required</h3>
+            <p class="rvt-alert__message">Please sign in to continue.</p>
+        </div>
+
+        <!-- API Settings -->
+        <div class="settings-card">
+            <h3 class="rvt-ts-20 rvt-m-bottom-md">🔧 Settings</h3>
+            
+            <!-- API Status Indicator -->
+            <div class="rvt-m-bottom-lg">
+                <div id="apiStatus" class="api-status checking">
+                    <span class="status-dot"></span>
+                    <span id="apiStatusText">Checking API...</span>
+                </div>
+            </div>
+            
+
+            
+            <div class="api-selector">
+                <label class="rvt-label rvt-ts-14">Select API Version:</label>
+                
+                <div class="api-option">
+                    <input type="radio" id="apiScripts" name="apiVersion" value="scripts" checked class="rvt-radio">
+                    <label for="apiScripts" class="rvt-label rvt-ts-14">Scripts Version (Port 8000)</label>
+                </div>
+                
+                <div class="api-option">
+                    <input type="radio" id="apiV2" name="apiVersion" value="v2" class="rvt-radio">
+                    <label for="apiV2" class="rvt-label rvt-ts-14">V2 TOML Version (Port 8001)</label>
+                </div>
+                
+                <div class="api-option">
+                    <input type="radio" id="apiCustom" name="apiVersion" value="custom" class="rvt-radio">
+                    <label for="apiCustom" class="rvt-label rvt-ts-14">Custom Endpoint</label>
+                </div>
+                
+                <button type="button" class="rvt-button rvt-button--secondary rvt-button--small" id="testConnection">
+                    Test Connection
+                </button>
+            </div>
+            
+            <div class="custom-endpoint" id="customEndpoint">
+                <label for="customUrl" class="rvt-label rvt-ts-14">Custom API URL:</label>
+                <input type="url" id="customUrl" class="rvt-input" 
+                       placeholder="http://localhost:8002" 
+                       value="http://localhost:8002">
+            </div>
+        </div>
+
+        <div class="upload-card" id="uploadCard">
+            <h2 class="rvt-ts-26 rvt-m-bottom-md">Upload Presentation</h2>
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon"></div>
+                <h3 class="rvt-ts-20 rvt-m-bottom-sm">Drag & drop PowerPoint file here</h3>
+                <p class="rvt-ts-14 rvt-text-secondary rvt-m-bottom-md">or</p>
+                <button type="button" class="rvt-button" id="selectBtn">Select File</button>
+                <p class="rvt-ts-12 rvt-text-secondary rvt-m-top-sm">Max 500MB</p>
+            </div>
+            <input type="file" id="fileInput" accept=".pptx" style="display: none;">
+            
+            <div class="file-info" id="fileInfo">
+                <div class="rvt-alert rvt-alert--success rvt-m-top-md">
+                    <h3 class="rvt-alert__title">File loaded</h3>
+                    <p class="rvt-alert__message" id="fileName"></p>
+                </div>
+            </div>
+
+            <div class="consent-box">
+                <h3 class="rvt-ts-18 rvt-m-bottom-sm">Privacy Notice</h3>
+                <p class="rvt-ts-14 rvt-m-bottom-md">This tool uses Azure OpenAI to analyze images. Files are processed temporarily and not stored.</p>
+                <div class="rvt-checkbox">
+                    <input type="checkbox" id="consent">
+                    <label for="consent">I consent to Azure OpenAI processing</label>
+                </div>
+            </div>
+
+            <div class="rvt-m-top-md" style="padding: 1rem; background: #f5f5f5; border-radius: 4px;">
+                <h4 class="rvt-ts-16 rvt-m-bottom-sm">⚡ Processing Options</h4>
+                <div class="rvt-checkbox">
+                    <input type="checkbox" id="skipTextBoxes" checked>
+                    <label for="skipTextBoxes">Skip text boxes (faster processing)</label>
+                </div>
+                <p class="rvt-ts-12 rvt-text-secondary rvt-m-top-xs">
+                    Text boxes are already accessible to screen readers via their text content. Skipping them speeds up processing significantly.
+                </p>
+            </div>
+
+            <div class="rvt-m-top-lg rvt-text-center">
+                <button type="button" class="rvt-button rvt-button--large" id="processBtn" disabled>Process PowerPoint</button>
+            </div>
+        </div>
+
+        <div class="upload-card hidden" id="progressCard">
+            <h2 class="rvt-ts-26 rvt-m-bottom-md">Processing...</h2>
+            <div class="rvt-text-center rvt-m-bottom-md">
+                <div class="rvt-loader rvt-loader--xl" aria-label="Processing"></div>
+            </div>
+            <p class="rvt-text-center rvt-ts-18 rvt-m-bottom-sm" id="status">Analyzing...</p>
+            <div class="rvt-progress-bar rvt-m-bottom-sm">
+                <div class="rvt-progress-bar__segment" id="progress" style="width: 0%; transition: width 0.5s ease"></div>
+            </div>
+            <p class="rvt-text-center rvt-ts-14 rvt-color-black-500" id="progressDetail"></p>
+        </div>
+
+        <div class="upload-card hidden" id="resultsCard">
+            <h2 class="rvt-ts-32 rvt-m-bottom-md"> Complete!</h2>
+            <div class="score-grid">
+                <div class="score-card score-before">
+                    <h3>Slide Titles</h3>
+                    <div class="score-value" id="scoreBefore">0</div>
+                </div>
+                <div class="score-card score-after">
+                    <h3>Alt-Texts</h3>
+                    <div class="score-value" id="scoreAfter">0</div>
+                </div>
+                <div class="score-card score-improvement">
+                    <h3>Decorative</h3>
+                    <div class="score-value" id="scoreImprove">0</div>
+                </div>
+            </div>
+            <div class="details">
+                <h3 class="rvt-ts-23 rvt-m-bottom-md">Processing Report</h3>
+                
+                <!-- Duplicate buttons for convenience when report is long -->
+                <div class="rvt-button-group rvt-m-bottom-md">
+                    <button type="button" class="rvt-button rvt-button--success" id="downloadBtnTop">Download File</button>
+                    <button type="button" class="rvt-button rvt-button--secondary" id="resetBtnTop">Process Another</button>
+                </div>
+                
+                <div id="details" class="markdown-content">Loading report...</div>
+            </div>
+            <div class="rvt-button-group rvt-m-top-lg">
+                <button type="button" class="rvt-button rvt-button--success" id="downloadBtn">Download File</button>
+                <button type="button" class="rvt-button rvt-button--secondary" id="resetBtn">Process Another</button>
+            </div>
+        </div>
+
+        <div class="upload-card hidden" id="errorCard">
+            <div class="rvt-alert rvt-alert--danger">
+                <h3 class="rvt-alert__title">Error</h3>
+                <p class="rvt-alert__message" id="errorMsg"></p>
+            </div>
+            <button type="button" class="rvt-button rvt-button--secondary rvt-m-top-md" id="retryBtn">Try Again</button>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/rivet-core@2.9.0/js/rivet.min.js"></script>
+    <script src="https://unpkg.com/marked@9.1.6/marked.min.js"></script>
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

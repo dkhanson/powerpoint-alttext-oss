@@ -1,0 +1,49 @@
+# Default configuration for PowerPoint Alt-Text Generator
+
+[api]
+host = "0.0.0.0"
+port = 8001
+reload = true
+log_level = "info"
+max_file_size_mb = 100
+timeout_seconds = 300
+cors_origins = ["*"]
+
+[azure_openai]
+# Provider: "auto" (detect from config), "azure", or "openai"
+provider = "auto"
+endpoint = ""
+api_key = ""
+api_version = "2024-12-01-preview"
+model = "gpt-4o"
+max_tokens = 300
+temperature = 0.3
+prompt_template = "Describe the image in concise alt text (max {max_length} chars)."
+
+[processing]
+temp_dir = "temp_uploads"
+results_dir = "api_results"
+backup_originals = true
+process_images = true
+process_shapes = true
+process_slide_titles = true
+force_regenerate = false
+force_regenerate_slide_titles = false
+enable_multithreading = true
+max_concurrent_api_calls = 10
+max_alt_text_length = 180
+deduplicate_titles = true
+rename_shapes_with_index = false
+images_and_decorators_only = false
+skip_objects_with_text = false
+
+[accessibility]
+target_score_threshold = 80.0
+enable_scoring = true
+
+[auth]
+require_auth = false
+issuer = ""
+audience = ""
+jwks_url = ""
+algorithms = ["RS256"]

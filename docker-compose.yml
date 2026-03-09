@@ -1,0 +1,64 @@
+# Docker Compose for PowerPoint Alt-Text Generator
+# Usage: docker compose up --build
+
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: powerpoint-alttext-api
+    ports:
+      - "8001:8001"
+    environment:
+      # --- Set your API key (pick ONE) ---
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}
+      # Processing
+      - PROCESSING_FORCE_REGENERATE=${PROCESSING_FORCE_REGENERATE:-false}
+      - PROCESSING_ENABLE_MULTITHREADING=${PROCESSING_ENABLE_MULTITHREADING:-true}
+      - PROCESSING_MAX_CONCURRENT_API_CALLS=${PROCESSING_MAX_CONCURRENT_API_CALLS:-10}
+      # Auth disabled by default
+      - AUTH_DISABLED=1
+    volumes:
+      - ./data/temp:/app/temp_uploads
+      - ./data/results:/app/api_results
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  webui:
+    build:
+      context: ./webui
+      dockerfile: Dockerfile
+    container_name: powerpoint-alttext-webui
+    ports:
+      - "80:80"
+    environment:
+      - WEB_PORT=80
+      - AUTH_DISABLED=1
+    depends_on:
+      - api
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

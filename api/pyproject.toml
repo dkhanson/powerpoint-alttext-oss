@@ -1,0 +1,43 @@
+[tool.pytest.ini_options]
+# Pytest configuration for V2 tests
+
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Show extra test summary info
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=powerpoint_alttext_v2",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+]
+
+# Markers for organizing tests
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow-running tests",
+    "requires_api_key: Tests that require Azure OpenAI API key",
+]
+
+# Coverage settings
+[tool.coverage.run]
+source = ["powerpoint_alttext_v2"]
+omit = [
+    "*/tests/*",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
