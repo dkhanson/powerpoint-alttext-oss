@@ -1,7 +1,7 @@
 # PowerPoint Alt-Text Generator V2 API Docker Container
 # Multi-stage build for optimized production image
 
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 # Set working directory for build
 WORKDIR /build
@@ -40,12 +40,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+# Install runtime dependencies and apply all available security patches
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libxml2 \
     libxslt1.1 \
-    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Upgrade Python packaging tools (fixes pip CVE-2025-8869/CVE-2026-1703,
+# wheel CVE-2026-24049, jaraco.context CVE-2026-23949)
+RUN pip install --no-cache-dir --upgrade pip wheel setuptools
 
 # Create app user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
@@ -70,9 +73,9 @@ USER appuser
 # Expose port
 EXPOSE 8001
 
-# Health check
+# Health check (uses python instead of curl to reduce attack surface)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8001/health || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')" || exit 1
 
 # Run the API server
 CMD ["python", "/app/docker_start.py"]

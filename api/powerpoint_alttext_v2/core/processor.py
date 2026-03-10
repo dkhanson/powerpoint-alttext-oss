@@ -411,27 +411,41 @@ class PowerPointProcessor:
                     grpSpPr_elem = child
                     break
             
-            # Build list of XML elements in desired order
+            # Build set of shape XML elements for lookup
+            shape_elements = set()
             xml_elements_in_order = []
             for shape_tuple in sorted_shapes:
                 shape = shape_tuple[2]
                 # Get the shape's XML element
-                if hasattr(shape, 'element'):
-                    xml_elements_in_order.append(shape.element)
-                elif hasattr(shape, '_element'):
-                    xml_elements_in_order.append(shape._element)
-            
+                elem = getattr(shape, 'element', None)
+                if elem is None:
+                    elem = getattr(shape, '_element', None)
+                if elem is not None:
+                    shape_elements.add(elem)
+                    xml_elements_in_order.append(elem)
+
+            # Collect non-shape elements (e.g. mc:AlternateContent, extLst)
+            # that python-pptx doesn't expose as shapes but PowerPoint requires
+            non_shape_elements = []
+            for child in list(sp_tree):
+                if child not in [nvGrpSpPr_elem, grpSpPr_elem] and child not in shape_elements:
+                    non_shape_elements.append(child)
+
             # Remove all shape elements from tree (except nvGrpSpPr and grpSpPr)
             elements_to_remove = []
             for child in list(sp_tree):
                 if child not in [nvGrpSpPr_elem, grpSpPr_elem]:
                     elements_to_remove.append(child)
-            
+
             for elem in elements_to_remove:
                 sp_tree.remove(elem)
-            
+
             # Re-add shape elements in sorted order
             for xml_elem in xml_elements_in_order:
+                sp_tree.append(xml_elem)
+
+            # Re-add non-shape elements (AlternateContent, etc.) at the end
+            for xml_elem in non_shape_elements:
                 sp_tree.append(xml_elem)
             
             return True
